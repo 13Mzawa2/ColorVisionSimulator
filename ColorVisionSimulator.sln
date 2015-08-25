@@ -1,0 +1,40 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.21005.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ColorVisionSimulator", "ColorVisionSimulator\ColorVisionSimulator.vcxproj", "{D80A0102-6744-4B19-977B-2C60F21736D2}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "高齢者特性LUT作成", "高齢者特性LUT作成\高齢者特性LUT作成.vcxproj", "{D16FBB5E-D06F-48DE-B8FE-357C98CF7507}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "色覚特性LUT作成", "色覚特性LUT作成\色覚特性LUT作成.vcxproj", "{788FBCCB-18B3-4CB3-89D9-42D54F3D3442}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "キャリブレーションデータ作成", "キャリブレーションデータ作成\キャリブレーションデータ作成.vcxproj", "{36606288-B79B-4183-9243-4BFCAE671B5D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D80A0102-6744-4B19-977B-2C60F21736D2}.Debug|Win32.ActiveCfg = Debug|Win32
+		{D80A0102-6744-4B19-977B-2C60F21736D2}.Debug|Win32.Build.0 = Debug|Win32
+		{D80A0102-6744-4B19-977B-2C60F21736D2}.Release|Win32.ActiveCfg = Release|Win32
+		{D80A0102-6744-4B19-977B-2C60F21736D2}.Release|Win32.Build.0 = Release|Win32
+		{D16FBB5E-D06F-48DE-B8FE-357C98CF7507}.Debug|Win32.ActiveCfg = Debug|Win32
+		{D16FBB5E-D06F-48DE-B8FE-357C98CF7507}.Debug|Win32.Build.0 = Debug|Win32
+		{D16FBB5E-D06F-48DE-B8FE-357C98CF7507}.Release|Win32.ActiveCfg = Release|Win32
+		{D16FBB5E-D06F-48DE-B8FE-357C98CF7507}.Release|Win32.Build.0 = Release|Win32
+		{788FBCCB-18B3-4CB3-89D9-42D54F3D3442}.Debug|Win32.ActiveCfg = Debug|Win32
+		{788FBCCB-18B3-4CB3-89D9-42D54F3D3442}.Debug|Win32.Build.0 = Debug|Win32
+		{788FBCCB-18B3-4CB3-89D9-42D54F3D3442}.Release|Win32.ActiveCfg = Release|Win32
+		{788FBCCB-18B3-4CB3-89D9-42D54F3D3442}.Release|Win32.Build.0 = Release|Win32
+		{36606288-B79B-4183-9243-4BFCAE671B5D}.Debug|Win32.ActiveCfg = Debug|Win32
+		{36606288-B79B-4183-9243-4BFCAE671B5D}.Debug|Win32.Build.0 = Debug|Win32
+		{36606288-B79B-4183-9243-4BFCAE671B5D}.Release|Win32.ActiveCfg = Release|Win32
+		{36606288-B79B-4183-9243-4BFCAE671B5D}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

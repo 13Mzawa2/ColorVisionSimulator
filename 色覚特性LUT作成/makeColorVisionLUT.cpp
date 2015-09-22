@@ -20,6 +20,7 @@
 ************************************************************************/
 
 #include "OpenCV3Linker.h"
+#include <omp.h>
 
 using namespace cv;
 using namespace std;
@@ -40,14 +41,14 @@ void lookup(Mat &src, Mat &dst, Mat &LUT);
 //	カラーキャリブレーション計測値
 //	ディスプレイのガンマ特性等をここに入力する
 //----------------------------------------------
-static double gamma[3] = { 2.28905804, 2.493837294, 2.232554852 };		//	B, G, Rのガンマ係数
-static double Lmax[3] = { 51.28, 223.98, 68.48 };						//	B, G, Rの最大出力輝度(階調値255の時の輝度)
+static double gamma[3] = { 2.43434386, 1.96794267006194, 1.762290873 };		//	B, G, Rのガンマ係数
+static double Lmax[3] = { 31.23, 452.13, 150.13 };						//	B, G, Rの最大出力輝度(階調値255の時の輝度)
 //	ディスプレイの各蛍光体の平均色度
 //	xyDisp[0].x = xB　のようになる
 static Point2d xyDisp[3] = {
-	Point2d(0.1751, 0.09136),	//	xB, yB
-	Point2d(0.2934, 0.6378),	//	xG, yG
-	Point2d(0.6311, 0.3539)		//	xR, yR
+	Point2d(0.1375, 0.04131),	//	xB, yB
+	Point2d(0.3301, 0.6022),	//	xG, yG
+	Point2d(0.6232, 0.3787)		//	xR, yR
 };
 
 //---------------------------------
@@ -130,74 +131,78 @@ int main(void)
 	Mat LUT_typeT(0xffffff + 1, 1, CV_8UC3);			//	三型(T)二色覚シミュレーション用
 	cout << "二色覚LUTを作成中..." << endl;
 
-	for (int b = 0; b <= 0xff; b++)
+#pragma omp parallel
 	{
-		static int counter = 1;
-		cout << counter++ << " / 256 完了" << "\r";
-		for (int g = 0; g <= 0xff; g++)
+#pragma omp for
+		for (int b = 0; b <= 0xff; b++)
 		{
-			for (int r = 0; r <= 0xff; r++)
+			static int counter = 1;
+			cout << counter++ << " / 256 完了" << "\r";
+			for (int g = 0; g <= 0xff; g++)
 			{
-				//	1. ガンマをもとに階調値から表示デバイス出力輝度を求める
-				//	YBGR.x = YG, YBGR.y = YG, YBGR.z = YR
-				Point3d YBGR(	//	RGB蛍光体の出力輝度
-					Lmax[0] * pow((double)b / 255.0, gamma[0]),		//	B
-					Lmax[1] * pow((double)g / 255.0, gamma[1]),		//	G
-					Lmax[2] * pow((double)r / 255.0, gamma[2])		//	R
-					);
-				//	2. YBGR -> XYZ -> LMS
-				Point3d LMS = cvtMatYBGR2LMS * YBGR;
-				//	3. LMS空間でBrettelシミュレーション&輝度削減
-				Point3d LMSBrettel_typeP, LMSBrettel_typeD, LMSBrettel_typeT;
-				//	Type P
-				//	L錐体欠損
-				LMSBrettel_typeP = LMS;
-				if (LMS.z / LMS.y < LMSWhite.z / LMSWhite.y)		//	MS平面へ正射影した色ベクトルがWhiteより傾きが大きければ475nmの方に投影
-					LMSBrettel_typeP.x = -(npd1.y*LMS.y + npd1.z * LMS.z) / npd1.x;		//	法線ベクトルで定義される平面にL軸平行移動
-				else
-					LMSBrettel_typeP.x = -(npd2.y*LMS.y + npd2.z * LMS.z) / npd2.x;
-				double kp = 1.0 - Ma1.x * LMS.x / Ma1.dot(LMSBrettel_typeP);			//	L錐体が寄与する輝度成分をカット
-				Point3d LMSKanbe_typeP = kp * LMSBrettel_typeP;
-				//	Type D
-				//	M錐体欠損
-				LMSBrettel_typeD = LMS;
-				if (LMS.z / LMS.x < LMSWhite.z / LMSWhite.x)
-					LMSBrettel_typeD.y = -(npd1.z*LMS.z + npd1.x * LMS.x) / npd1.y;
-				else
-					LMSBrettel_typeD.y = -(npd2.z*LMS.z + npd2.x * LMS.x) / npd2.y;
-				double kd = 1.0 - Ma1.y * LMS.y / Ma1.dot(LMSBrettel_typeD);
-				Point3d LMSKanbe_typeD = kd * LMSBrettel_typeD;
-				//	Type T
-				//	S錐体欠損
-				LMSBrettel_typeT = LMS;
-				if (LMS.y / LMS.x < LMSWhite.y / LMSWhite.x)
-					LMSBrettel_typeT.z = -(nt1.x*LMS.x + nt1.y * LMS.y) / nt1.z;
-				else
-					LMSBrettel_typeT.z = -(nt2.x*LMS.x + nt2.y * LMS.y) / nt2.z;
-				double kt = 1.0 - Ma1.z * LMS.z / Ma1.dot(LMSBrettel_typeT);		//	実は kt = 1
-				Point3d LMSKanbe_typeT = kt* LMSBrettel_typeT;
-				//	4. LMS -> XYZ -> YBGR
-				Vec3d YBGR_typeP = cvtMatLMS2YBGR * LMSKanbe_typeP;
-				Vec3d YBGR_typeD = cvtMatLMS2YBGR * LMSKanbe_typeD;
-				Vec3d YBGR_typeT = cvtMatLMS2YBGR * LMSKanbe_typeT;
-				//	5. YBGR -> BGR(ガンマ補正)
-				for (int i = 0; i < 3; i++)
+				for (int r = 0; r <= 0xff; r++)
 				{
-					double BGRp = 255.0 * pow(YBGR_typeP[i] / Lmax[i], 1 / gamma[i]);
-					double BGRd = 255.0 * pow(YBGR_typeD[i] / Lmax[i], 1 / gamma[i]);
-					double BGRt = 255.0 * pow(YBGR_typeT[i] / Lmax[i], 1 / gamma[i]);
-					LUT_typeP.at<Vec3b>(BIT(b, g, r), 0)[i] = (BGRp > 0.0) ? ((BGRp < 255.0) ? (uchar)BGRp : 0xff) : 0x00;	//	0x00 ~ 0xff　の範囲に収める
-					LUT_typeD.at<Vec3b>(BIT(b, g, r), 0)[i] = (BGRd > 0.0) ? ((BGRd < 255.0) ? (uchar)BGRd : 0xff) : 0x00;
-					LUT_typeT.at<Vec3b>(BIT(b, g, r), 0)[i] = (BGRt > 0.0) ? ((BGRt < 255.0) ? (uchar)BGRt : 0xff) : 0x00;
+					//	1. ガンマをもとに階調値から表示デバイス出力輝度を求める
+					//	YBGR.x = YG, YBGR.y = YG, YBGR.z = YR
+					Point3d YBGR(	//	RGB蛍光体の出力輝度
+						Lmax[0] * pow((double)b / 255.0, gamma[0]),		//	B
+						Lmax[1] * pow((double)g / 255.0, gamma[1]),		//	G
+						Lmax[2] * pow((double)r / 255.0, gamma[2])		//	R
+						);
+					//	2. YBGR -> XYZ -> LMS
+					Point3d LMS = cvtMatYBGR2LMS * YBGR;
+					//	3. LMS空間でBrettelシミュレーション&輝度削減
+					Point3d LMSBrettel_typeP, LMSBrettel_typeD, LMSBrettel_typeT;
+					//	Type P
+					//	L錐体欠損
+					LMSBrettel_typeP = LMS;
+					if (LMS.z / LMS.y < LMSWhite.z / LMSWhite.y)		//	MS平面へ正射影した色ベクトルがWhiteより傾きが大きければ475nmの方に投影
+						LMSBrettel_typeP.x = -(npd1.y*LMS.y + npd1.z * LMS.z) / npd1.x;		//	法線ベクトルで定義される平面にL軸平行移動
+					else
+						LMSBrettel_typeP.x = -(npd2.y*LMS.y + npd2.z * LMS.z) / npd2.x;
+					double kp = 1.0 - Ma1.x * LMS.x / Ma1.dot(LMSBrettel_typeP);			//	L錐体が寄与する輝度成分をカット
+					Point3d LMSKanbe_typeP = kp * LMSBrettel_typeP;
+					//	Type D
+					//	M錐体欠損
+					LMSBrettel_typeD = LMS;
+					if (LMS.z / LMS.x < LMSWhite.z / LMSWhite.x)
+						LMSBrettel_typeD.y = -(npd1.z*LMS.z + npd1.x * LMS.x) / npd1.y;
+					else
+						LMSBrettel_typeD.y = -(npd2.z*LMS.z + npd2.x * LMS.x) / npd2.y;
+					double kd = 1.0 - Ma1.y * LMS.y / Ma1.dot(LMSBrettel_typeD);
+					Point3d LMSKanbe_typeD = kd * LMSBrettel_typeD;
+					//	Type T
+					//	S錐体欠損
+					LMSBrettel_typeT = LMS;
+					if (LMS.y / LMS.x < LMSWhite.y / LMSWhite.x)
+						LMSBrettel_typeT.z = -(nt1.x*LMS.x + nt1.y * LMS.y) / nt1.z;
+					else
+						LMSBrettel_typeT.z = -(nt2.x*LMS.x + nt2.y * LMS.y) / nt2.z;
+					double kt = 1.0 - Ma1.z * LMS.z / Ma1.dot(LMSBrettel_typeT);		//	実は kt = 1
+					Point3d LMSKanbe_typeT = kt* LMSBrettel_typeT;
+					//	4. LMS -> XYZ -> YBGR
+					Vec3d YBGR_typeP = cvtMatLMS2YBGR * LMSKanbe_typeP;
+					Vec3d YBGR_typeD = cvtMatLMS2YBGR * LMSKanbe_typeD;
+					Vec3d YBGR_typeT = cvtMatLMS2YBGR * LMSKanbe_typeT;
+					//	5. YBGR -> BGR(ガンマ補正)
+					for (int i = 0; i < 3; i++)
+					{
+						double BGRp = 255.0 * pow(YBGR_typeP[i] / Lmax[i], 1 / gamma[i]);
+						double BGRd = 255.0 * pow(YBGR_typeD[i] / Lmax[i], 1 / gamma[i]);
+						double BGRt = 255.0 * pow(YBGR_typeT[i] / Lmax[i], 1 / gamma[i]);
+						LUT_typeP.at<Vec3b>(BIT(b, g, r), 0)[i] = (BGRp > 0.0) ? ((BGRp < 255.0) ? (uchar)BGRp : 0xff) : 0x00;	//	0x00 ~ 0xff　の範囲に収める
+						LUT_typeD.at<Vec3b>(BIT(b, g, r), 0)[i] = (BGRd > 0.0) ? ((BGRd < 255.0) ? (uchar)BGRd : 0xff) : 0x00;
+						LUT_typeT.at<Vec3b>(BIT(b, g, r), 0)[i] = (BGRt > 0.0) ? ((BGRt < 255.0) ? (uchar)BGRt : 0xff) : 0x00;
+					}
 				}
 			}
-		}
-	}	//	LUT作成終了
+		}	//	LUT作成終了
+	}
 	cout << "\nLUTの作成が終了しました．テスト画像を表示します．" << endl;
 	//-----------------------------
 	//	画像変換テスト
 	//-----------------------------
-	Mat testImg = imread("img/lovelive.png");
+	Mat testImg = imread("img/Baboon.png");
 	Mat dstImgP, dstImgD, dstImgT;
 	lookup(testImg, dstImgP, LUT_typeP);
 	lookup(testImg, dstImgD, LUT_typeD);
@@ -210,9 +215,9 @@ int main(void)
 	destroyAllWindows();
 
 	cout << "結果を保存中..." << endl;
-	imwrite("img/loveliveP.png", dstImgP);
-	imwrite("img/loveliveD.png", dstImgD);
-	imwrite("img/loveliveT.png", dstImgT);
+	imwrite("img/Baboon1.png", dstImgP);
+	imwrite("img/Baboon2.png", dstImgD);
+	imwrite("img/Baboon3.png", dstImgT);
 	//-----------------------------
 	//	LUTをPNG形式で保存
 	//-----------------------------

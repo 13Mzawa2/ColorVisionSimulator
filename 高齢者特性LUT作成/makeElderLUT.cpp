@@ -22,6 +22,7 @@
 ************************************************************************/
 
 #include "OpenCV3Linker.h"
+#include <omp.h>
 
 using namespace cv;
 using namespace std;
@@ -42,14 +43,14 @@ void lookup(Mat &src, Mat &dst, Mat &LUT);
 //	カラーキャリブレーション計測値
 //	ディスプレイのガンマ特性等をここに入力する
 //----------------------------------------------
-static double gamma[3] = { 2.28905804, 2.493837294, 2.232554852 };		//	B, G, Rのガンマ係数
-static double Lmax[3] = { 51.28, 223.98, 68.48 };						//	B, G, Rの最大出力輝度(階調値255の時の輝度)
+static double gamma[3] = { 2.43434386, 1.96794267006194, 1.762290873 };		//	B, G, Rのガンマ係数
+static double Lmax[3] = { 31.23, 452.13, 150.13};						//	B, G, Rの最大出力輝度(階調値255の時の輝度)
 //	ディスプレイの各蛍光体の平均色度
 //	xyDisp[0].x = xB　のようになる
 static Point2d xyDisp[3] = {
-	Point2d(0.1751, 0.09136),	//	xB, yB
-	Point2d(0.2934, 0.6378),	//	xG, yG
-	Point2d(0.6311, 0.3539)		//	xR, yR
+	Point2d(0.1375, 0.04131),	//	xB, yB
+	Point2d(0.3301, 0.6022),	//	xG, yG
+	Point2d(0.6232, 0.3787)		//	xR, yR
 };
 
 //---------------------------------
@@ -69,45 +70,49 @@ int main(void)
 	Mat LUT_elder70(0xffffff + 1, 1, CV_8UC3);			//	70歳高齢者シミュレーション用
 	Mat LUT_elder80(0xffffff + 1, 1, CV_8UC3);			//	80歳高齢者シミュレーション用
 	cout << "高齢者特性LUTを作成中..." << endl;
-	for (int b = 0; b <= 0xff; b++)
+#pragma omp parallel
 	{
-		static int counter = 1;
-		cout << counter++ << " / 256 完了" << "\r";
-		for (int g = 0; g <= 0xff; g++)
+#pragma omp for
+		for (int b = 0; b <= 0xff; b++)
 		{
-			for (int r = 0; r <= 0xff; r++)
+			static int counter = 1;
+			cout << counter++ << " / 256 完了" << "\r";
+			for (int g = 0; g <= 0xff; g++)
 			{
-				//	1. ガンマをもとに階調値から表示デバイス出力輝度を求める
-				//	YBGR.x = YG, YBGR.y = YG, YBGR.z = YR
-				Point3d YBGR(	//	RGB蛍光体の出力輝度
-					Lmax[0] * pow((double)b / 0xff, gamma[0]),		//	B
-					Lmax[1] * pow((double)g / 0xff, gamma[1]),		//	G
-					Lmax[2] * pow((double)r / 0xff, gamma[2])		//	R
-					);
-				//	2. 老人性縮瞳を考慮した実効輝度比の計算
-				double Ke70 = alpha70 * (K70.x * YBGR.x + K70.y * YBGR.y + K70.z * YBGR.z) / (YBGR.x + YBGR.y + YBGR.z);
-				double Ke80 = alpha80 * (K80.x * YBGR.x + K80.y * YBGR.y + K80.z * YBGR.z) / (YBGR.x + YBGR.y + YBGR.z);
-				//	3. 実効輝度の計算
-				//	Ye70.x = YeB(70歳変換後のB蛍光体の出力輝度), Ye70.y = YeG, Ye70.z = YeR
-				Vec3d Ye70 = Ke70 * YBGR;
-				Vec3d Ye80 = Ke80 * YBGR;
-				//	4. ガンマ補正でBGRに逆算
-				for (int i = 0; i < 3; i++)
+				for (int r = 0; r <= 0xff; r++)
 				{
-					double BGR70 = 0xff * pow(Ye70[i] / Lmax[i], 1.0 / gamma[i]);
-					double BGR80 = 0xff * pow(Ye80[i] / Lmax[i], 1.0 / gamma[i]);
-					
-					LUT_elder70.at<Vec3b>(BIT(b, g, r), 0)[i] = (BGR70 > 0.0) ? ((BGR70 < 255.0) ? (uchar)BGR70 : 0xff) : 0x00;
-					LUT_elder80.at<Vec3b>(BIT(b, g, r), 0)[i] = (BGR80 > 0.0) ? ((BGR80 < 255.0) ? (uchar)BGR80 : 0xff) : 0x00;
+					//	1. ガンマをもとに階調値から表示デバイス出力輝度を求める
+					//	YBGR.x = YG, YBGR.y = YG, YBGR.z = YR
+					Point3d YBGR(	//	RGB蛍光体の出力輝度
+						Lmax[0] * pow((double)b / 0xff, gamma[0]),		//	B
+						Lmax[1] * pow((double)g / 0xff, gamma[1]),		//	G
+						Lmax[2] * pow((double)r / 0xff, gamma[2])		//	R
+						);
+					//	2. 老人性縮瞳を考慮した実効輝度比の計算
+					double Ke70 = alpha70 * (K70.x * YBGR.x + K70.y * YBGR.y + K70.z * YBGR.z) / (YBGR.x + YBGR.y + YBGR.z);
+					double Ke80 = alpha80 * (K80.x * YBGR.x + K80.y * YBGR.y + K80.z * YBGR.z) / (YBGR.x + YBGR.y + YBGR.z);
+					//	3. 実効輝度の計算
+					//	Ye70.x = YeB(70歳変換後のB蛍光体の出力輝度), Ye70.y = YeG, Ye70.z = YeR
+					Vec3d Ye70 = Ke70 * YBGR;
+					Vec3d Ye80 = Ke80 * YBGR;
+					//	4. ガンマ補正でBGRに逆算
+					for (int i = 0; i < 3; i++)
+					{
+						double BGR70 = 0xff * pow(Ye70[i] / Lmax[i], 1.0 / gamma[i]);
+						double BGR80 = 0xff * pow(Ye80[i] / Lmax[i], 1.0 / gamma[i]);
+
+						LUT_elder70.at<Vec3b>(BIT(b, g, r), 0)[i] = (BGR70 > 0.0) ? ((BGR70 < 255.0) ? (uchar)BGR70 : 0xff) : 0x00;
+						LUT_elder80.at<Vec3b>(BIT(b, g, r), 0)[i] = (BGR80 > 0.0) ? ((BGR80 < 255.0) ? (uchar)BGR80 : 0xff) : 0x00;
+					}
 				}
 			}
-		}
-	}		//	LUT作成終了
+		}		//	LUT作成終了
+	}
 	cout << "\nLUTの作成が終了しました．テスト画像を表示します．" << endl;
 	//-----------------------------
 	//	画像変換テスト
 	//-----------------------------
-	Mat testImg = imread("img/test.bmp");
+	Mat testImg = imread("img/Baboon.png");
 	Mat dstImg70, dstImg80;
 	lookup(testImg, dstImg70, LUT_elder70);
 	lookup(testImg, dstImg80, LUT_elder80);

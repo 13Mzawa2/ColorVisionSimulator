@@ -41,14 +41,14 @@ void lookup(Mat &src, Mat &dst, Mat &LUT);
 //	カラーキャリブレーション計測値
 //	ディスプレイのガンマ特性等をここに入力する
 //----------------------------------------------
-static double gamma[3] = { 2.43434386, 1.96794267006194, 1.762290873 };		//	B, G, Rのガンマ係数
-static double Lmax[3] = { 31.23, 452.13, 150.13 };						//	B, G, Rの最大出力輝度(階調値255の時の輝度)
+static double gamma[3] = { 2.373993418, 2.044073392, 2.192464043};		//	B, G, Rのガンマ係数
+static double Lmax[3] = { 9.16, 58.88, 34.18 };						//	B, G, Rの最大出力輝度(階調値255の時の輝度)
 //	ディスプレイの各蛍光体の平均色度
 //	xyDisp[0].x = xB　のようになる
 static Point2d xyDisp[3] = {
-	Point2d(0.1375, 0.04131),	//	xB, yB
-	Point2d(0.3301, 0.6022),	//	xG, yG
-	Point2d(0.6232, 0.3787)		//	xR, yR
+	Point2d(0.1392, 0.07449),	//	xB, yB
+	Point2d(0.2754,	0.6052),	//	xG, yG
+	Point2d(0.6172,	0.3684)		//	xR, yR
 };
 
 //---------------------------------
@@ -202,7 +202,7 @@ int main(void)
 	//-----------------------------
 	//	画像変換テスト
 	//-----------------------------
-	Mat testImg = imread("img/Baboon.png");
+	Mat testImg = imread("img/sapporo_new.png");
 	Mat dstImgP, dstImgD, dstImgT;
 	lookup(testImg, dstImgP, LUT_typeP);
 	lookup(testImg, dstImgD, LUT_typeD);
@@ -215,15 +215,15 @@ int main(void)
 	destroyAllWindows();
 
 	cout << "結果を保存中..." << endl;
-	imwrite("img/Baboon1.png", dstImgP);
-	imwrite("img/Baboon2.png", dstImgD);
-	imwrite("img/Baboon3.png", dstImgT);
+	imwrite("img/sapporo_new1.png", dstImgP);
+	imwrite("img/sapporo_new2.png", dstImgD);
+	imwrite("img/sapporo_new3.png", dstImgT);
 	//-----------------------------
 	//	LUTをPNG形式で保存
 	//-----------------------------
-	imwrite("data/LUT_dichromat_typeP.bmp", LUT_typeP);
-	imwrite("data/LUT_dichromat_typeD.bmp", LUT_typeD);
-	imwrite("data/LUT_dichromat_typeT.bmp", LUT_typeT);
+	imwrite("data/LUT_dichromat_typeP.png", LUT_typeP);
+	imwrite("data/LUT_dichromat_typeD.png", LUT_typeD);
+	imwrite("data/LUT_dichromat_typeT.png", LUT_typeT);
 	//-----------------------------
 	//	LUTをXML形式で保存
 	//-----------------------------
@@ -245,11 +245,6 @@ int main(void)
 		<< "xy_g" << xyDisp[1]
 		<< "xy_r" << xyDisp[2]
 		<< "}"
-		<< "}";
-	fs << "LUT" << "{"
-		<< "type_p" << LUT_typeP
-		<< "type_d" << LUT_typeD
-		<< "type_t" << LUT_typeT
 		<< "}";
 	cout << "LUTの保存に成功しました．" << endl;
 

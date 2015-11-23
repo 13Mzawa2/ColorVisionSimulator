@@ -43,16 +43,15 @@ void lookup(Mat &src, Mat &dst, Mat &LUT);
 //	カラーキャリブレーション計測値
 //	ディスプレイのガンマ特性等をここに入力する
 //----------------------------------------------
-static double gamma[3] = { 2.43434386, 1.96794267006194, 1.762290873 };		//	B, G, Rのガンマ係数
-static double Lmax[3] = { 31.23, 452.13, 150.13};						//	B, G, Rの最大出力輝度(階調値255の時の輝度)
+static double gamma[3] = { 2.373993418, 2.044073392, 2.192464043 };		//	B, G, Rのガンマ係数
+static double Lmax[3] = { 9.16, 58.88, 34.18 };						//	B, G, Rの最大出力輝度(階調値255の時の輝度)
 //	ディスプレイの各蛍光体の平均色度
 //	xyDisp[0].x = xB　のようになる
 static Point2d xyDisp[3] = {
-	Point2d(0.1375, 0.04131),	//	xB, yB
-	Point2d(0.3301, 0.6022),	//	xG, yG
-	Point2d(0.6232, 0.3787)		//	xR, yR
+	Point2d(0.1392, 0.07449),	//	xB, yB
+	Point2d(0.2754, 0.6052),	//	xG, yG
+	Point2d(0.6172, 0.3684)		//	xR, yR
 };
-
 //---------------------------------
 //	高齢者シミュレーション用定数
 //	神戸，小田の修論から引用
@@ -112,7 +111,7 @@ int main(void)
 	//-----------------------------
 	//	画像変換テスト
 	//-----------------------------
-	Mat testImg = imread("img/Baboon.png");
+	Mat testImg = imread("img/sapporo_new.png");
 	Mat dstImg70, dstImg80;
 	lookup(testImg, dstImg70, LUT_elder70);
 	lookup(testImg, dstImg80, LUT_elder80);
@@ -123,8 +122,8 @@ int main(void)
 	destroyAllWindows();
 
 	cout << "結果を保存中..." << endl;
-	imwrite("img/test70.bmp", dstImg70);
-	imwrite("img/test80.bmp", dstImg80);
+	imwrite("img/sapporo_new70.png", dstImg70);
+	imwrite("img/sapporo_new80.png", dstImg80);
 	//-----------------------------
 	//	LUTをPNG形式で保存
 	//-----------------------------
@@ -151,10 +150,6 @@ int main(void)
 			<< "xy_g" << xyDisp[1]
 			<< "xy_r" << xyDisp[2]
 			<< "}"
-		<< "}";
-	fs << "LUT" << "{"
-		<< "seventy" << LUT_elder70
-		<< "eighty" << LUT_elder80
 		<< "}";
 	cout << "LUTの保存に成功しました．" << endl;
 

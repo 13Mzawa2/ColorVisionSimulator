@@ -7,15 +7,32 @@
 	PNGまたはXML形式のLUTを読み込み，LUTに従って画像変換します．
 	但しXML形式は非常に重く，途中でオーバーフローしたり
 	LUTを全て読み込めない場合があったりするので非推奨です．
+
+	【使い方(2015/11/23更新)】
+	1.高齢者特性LUT作成　および　色覚特性LUT作成　で作成した
+	　PNG形式のLUT（XMLは使用不可）を./data内にコピーする．
+	2.ビルド時に3型2色覚を出力するかをマクロで指定する．
+	3.実行したらこのファイルの場所からの相対パスで元画像を指定する．
+	4.元画像と同じディレクトリに出力ファイルが保存される．
+	　hoge.png
+	  -> hoge_elder70.png
+	  -> hoge_elder80.png
+	  -> hoge_type1.png
+	  -> hoge_type2.png
+	  -> hoge_type3.png
 *****************************************************************/
 
 #include "OpenCV3Linker.h"
+#include <filesystem>		//	ファイルパスの変更に必要
 
 using namespace cv;
 using namespace std;
 
 //	LUTのアクセス用マクロ
 #define BIT(B, G, R) ((B) << 16 | (G) << 8 | (R))
+
+//	3型2色覚(type T)の出力を許可する場合はコメントを外す
+//#define USE_TYPE_T
 
 //--------------------------------------------
 //	関数プロトタイプ
@@ -48,7 +65,9 @@ int main(void)
 	cout << "色覚特性を読み込み中..." << endl;
 	LUT_typeP = imread("data/LUT_dichromat_typeP.png", CV_LOAD_IMAGE_COLOR);
 	LUT_typeD = imread("data/LUT_dichromat_typeD.png", CV_LOAD_IMAGE_COLOR);
+#ifdef USE_TYPE_T
 	LUT_typeT = imread("data/LUT_dichromat_typeT.png", CV_LOAD_IMAGE_COLOR);
+#endif
 	cout << "読み込みが終了しました." << endl;
 
 	//	TickCountの変化を[ms]単位で表示
@@ -127,16 +146,29 @@ int main(void)
 	//std::cout << "処理時間: " << (cv::getTickCount() - time)*f << " [ms]" << std::endl;
 
 	//	元画像の読み込み
-	Mat original = imread("img/lovelive.png");
-	resize(original, original, Size(320, 240));
+	string filename;
+	cout << "空白を含まないファイルパスを入力してください．（例：img/file_name.png）\n"
+		<< "\nOriginal Image File Path = ";
+	cin >> filename;
+	tr2::sys::path path(filename);
+	cout << "path：" << path << endl;
+	Mat original = imread(path.relative_path().string());
+	//resize(original, original, Size(320, 240));
 
 	//	LUTによる変換
+	if (original.rows == 0 || original.cols == 0)
+	{
+		cout << "画像が読み込めませんでした．ファイルパスを確認してください．" << endl;
+		return -1;
+	}
 	Mat elder70, elder80, typeP, typeD, typeT;
 	lookup(original, elder70, LUT_elder70);
 	lookup(original, elder80, LUT_elder80);
 	lookup(original, typeP, LUT_typeP);
 	lookup(original, typeD, LUT_typeD);
+#ifdef USE_TYPE_T
 	lookup(original, typeT, LUT_typeT);
+#endif
 
 	//	表示
 	imshow("元画像", original);
@@ -144,10 +176,19 @@ int main(void)
 	imshow("80歳", elder80);
 	imshow("1型2色覚", typeP);
 	imshow("2型2色覚", typeD);
+#ifdef USE_TYPE_T
 	imshow("3型2色覚", typeT);
-
+#endif
 	waitKey(0);
 
+	//	リネームして保存
+	imwrite(path.parent_path() + "/" + path.stem() + "_elder70" + path.extension(), elder70);
+	imwrite(path.parent_path() + "/" + path.stem() + "_elder80" + path.extension(), elder80);
+	imwrite(path.parent_path() + "/" + path.stem() + "_type1" + path.extension(), typeP);
+	imwrite(path.parent_path() + "/" + path.stem() + "_type2" + path.extension(), typeD);
+#ifdef USE_TYPE_T
+	imwrite(path.parent_path() + "/" + path.stem() + "_type3" + path.extension(), typeT);
+#endif
 	destroyAllWindows();
 
 	return 0;

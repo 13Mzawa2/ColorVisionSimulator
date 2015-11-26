@@ -152,7 +152,7 @@ int main(void)
 	cin >> filename;
 	tr2::sys::path path(filename);
 	cout << "pathF" << path << endl;
-	Mat original = imread(path.relative_path().string());
+	Mat original = imread(path._Mystr);
 	//resize(original, original, Size(320, 240));
 
 	//	LUT‚É‚æ‚é•ÏŠ·

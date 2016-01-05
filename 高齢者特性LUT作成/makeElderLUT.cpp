@@ -226,24 +226,21 @@ Point3d cvtXYZ2xyY(Point3d XYZ)
 //	XYZ to Lab　の変換
 Point3d cvtXYZ2Lab(Point3d XYZ, Point3d XYZ0)
 {
-	Point3d Lab;
-	if (XYZ.y / XYZ0.y > pow(6.0 / 29.0, 3))
-	{
-		Lab = Point3d(
-			116.0 * pow(XYZ.y / XYZ0.y, 1.0 / 3.0) - 16.0,
-			500.0 * (pow(XYZ.x / XYZ0.x, 1.0 / 3.0) - pow(XYZ.y / XYZ0.y, 1.0 / 3.0)),
-			200.0 * (pow(XYZ.y / XYZ0.y, 1.0 / 3.0) - pow(XYZ.z / XYZ0.z, 1.0 / 3.0))
-			);
-	}
-	else
-	{
-		Lab = Point3d(
-			903.29 * XYZ.y / XYZ0.y,
-			500.0 * (pow(XYZ.x / XYZ0.x, 1.0 / 3.0) - pow(XYZ.y / XYZ0.y, 1.0 / 3.0)),
-			200.0 * (pow(XYZ.y / XYZ0.y, 1.0 / 3.0) - pow(XYZ.z / XYZ0.z, 1.0 / 3.0))
-			);
-	}
-	return Lab;
+	struct
+	{	//	Lab変換適用範囲の条件分岐式の関数内関数定義
+		double operator()(double t)
+		{
+			if (t > pow(6.0 / 29.0, 3))
+				return pow(t, 1.0 / 3.0);
+			else
+				return pow(6.0 / 29.0, 3) / 3.0*t + 4.0 / 29.0;
+		}
+	}func;
+	return Point3d(
+		116.0 * func(XYZ.y / XYZ0.y) - 16.0,
+		500.0 * (func(XYZ.x / XYZ0.x) - func(XYZ.y / XYZ0.y)),
+		200.0 * (func(XYZ.y / XYZ0.y) - func(XYZ.z / XYZ0.z))
+		);
 }
 //	Lab to XYZ　の変換
 Point3d cvtLab2XYZ(Point3d Lab, Point3d XYZ0)

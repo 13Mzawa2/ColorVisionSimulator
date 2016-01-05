@@ -1,16 +1,17 @@
 /***********************************************************************
-	高齢者特性シミュレーション用LUT作成プログラム ver. 0.1
-	Author: Nishizawa	Date: 2015/08/22
+	高齢者特性シミュレーション用LUT作成プログラム ver. 0.2
+	Author: Nishizawa	Date: 2016/01/05
 	必要なライブラリ: OpenCV 3.0
 	
 	【機能】
-	高齢者の見えを神戸の手法で再現するLUTを，
+	高齢者の見えを小田・村上の手法で再現するLUTを，
 	PNG形式，XML形式の両方で作成します．
 	但しXML形式は非常に重いのでPNG形式を推奨します．
 
 	【参考文献】
 	神戸修論．高齢者視覚と色覚異常の動画シミュレーション．
 	小田修論．高齢者の色覚特性を考慮した演色性の評価方法と可視化．
+	村上卒論．高齢者の視覚特性シミュレータに関する研究．
 	岩元修論．視覚障害シミュレータにおける空間周波数特性模擬の精緻化．
 
 	【注意事項】
@@ -37,21 +38,25 @@ Point3d operator*(Mat M, const Point3d& p);
 Point3d cvtxyY2XYZ(Point3d xyY);
 Point3d cvtxyY2XYZ(Point2d xy, double Y);
 Point3d cvtXYZ2xyY(Point3d XYZ);
+Point3d cvtXYZ2Lab(Point3d XYZ, Point3d XYZ0);
+Point3d cvtLab2XYZ(Point3d Lab, Point3d XYZ0);
 void lookup(Mat &src, Mat &dst, Mat &LUT);
 
 //----------------------------------------------
 //	カラーキャリブレーション計測値
 //	ディスプレイのガンマ特性等をここに入力する
 //----------------------------------------------
-static double gamma[3] = { 2.373993418, 2.044073392, 2.192464043 };		//	B, G, Rのガンマ係数
-static double Lmax[3] = { 9.16, 58.88, 34.18 };						//	B, G, Rの最大出力輝度(階調値255の時の輝度)
+static double gamma[3] = { 2.43434386, 1.96794267, 1.762290873};		//	B, G, Rのガンマ係数
+static double Lmax[3] = { 31.23, 452.13, 150.13 };						//	B, G, Rの最大出力輝度(階調値255の時の輝度)
 //	ディスプレイの各蛍光体の平均色度
 //	xyDisp[0].x = xB　のようになる
 static Point2d xyDisp[3] = {
-	Point2d(0.1392, 0.07449),	//	xB, yB
-	Point2d(0.2754, 0.6052),	//	xG, yG
-	Point2d(0.6172, 0.3684)		//	xR, yR
+	Point2d(0.1375, 0.04131),	//	xB, yB
+	Point2d(0.3301, 0.6022),	//	xG, yG
+	Point2d(0.6232, 0.3787)		//	xR, yR
 };
+static Point3d xyYWhite(0.318, 0.335, 631);		//	白色板（完全拡散反射面）の測色値
+
 //---------------------------------
 //	高齢者シミュレーション用定数
 //	神戸，小田の修論から引用
@@ -59,6 +64,16 @@ static Point2d xyDisp[3] = {
 static Point3d K70(0.521, 0.673, 0.864);		//	70歳 vs 20歳の実効輝度比，BGR
 static Point3d K80(0.388, 0.555, 0.847);		//	80歳 vs 20歳, BGR
 static double alpha70 = 0.6, alpha80 = 0.5;			//	老人性縮瞳による網膜照度低下を表す視感透過率
+
+//	YBGR to XYZのための行列　xyDisp[3]から計算する
+static Mat cvtMatYBGR2XYZ = (Mat_<double>(3, 3) <<
+	xyDisp[0].x / xyDisp[0].y, xyDisp[1].x / xyDisp[1].y, xyDisp[2].x / xyDisp[2].y,
+	1.0, 1.0, 1.0,
+	(1 - xyDisp[0].x - xyDisp[0].y) / xyDisp[0].y, (1 - xyDisp[1].x - xyDisp[1].y) / xyDisp[1].y, (1 - xyDisp[2].x - xyDisp[2].y) / xyDisp[2].y);
+//	上記の逆行列
+static Mat cvtMatXYZ2YBGR = cvtMatYBGR2XYZ.inv();
+//	完全拡散反射面のXYZ
+static Point3d XYZWhite = cvtxyY2XYZ(xyYWhite);
 
 int main(void)
 {
@@ -80,20 +95,39 @@ int main(void)
 			{
 				for (int r = 0; r <= 0xff; r++)
 				{
-					//	1. ガンマをもとに階調値から表示デバイス出力輝度を求める
+					//	1. ガンマをもとに階調値BGRから表示デバイス出力輝度YBGRを求める
 					//	YBGR.x = YG, YBGR.y = YG, YBGR.z = YR
 					Point3d YBGR(	//	RGB蛍光体の出力輝度
 						Lmax[0] * pow((double)b / 0xff, gamma[0]),		//	B
 						Lmax[1] * pow((double)g / 0xff, gamma[1]),		//	G
 						Lmax[2] * pow((double)r / 0xff, gamma[2])		//	R
 						);
-					//	2. 老人性縮瞳を考慮した実効輝度比の計算
-					double Ke70 = alpha70 * (K70.x * YBGR.x + K70.y * YBGR.y + K70.z * YBGR.z) / (YBGR.x + YBGR.y + YBGR.z);
-					double Ke80 = alpha80 * (K80.x * YBGR.x + K80.y * YBGR.y + K80.z * YBGR.z) / (YBGR.x + YBGR.y + YBGR.z);
-					//	3. 実効輝度の計算
+					//	2. 色恒常性を考慮した色相・彩度変換式の導入（小田・村上）
+					//	注意：この変換式は平均24.4歳vs平均68.2歳の実験結果に基づく
+					//	2.1. YBGR -> XYZ -> L*a*b*
+					Point3d XYZ = cvtMatYBGR2XYZ * YBGR;
+					Point3d Lab = cvtXYZ2Lab(XYZ, XYZWhite);
+					//	2.2. 色相・彩度の変換係数を導出
+					double chroma = atan2(Lab.y, Lab.x);		//	彩度
+					double hue = sqrt(Lab.y * Lab.y + Lab.z * Lab.z);	//	色相[rad]
+					double Cey = 1.32 * exp(-chroma / 6.53) - exp(-pow((chroma - 47.23) / 2680.53, 2)) / 27.89 + 1.0;
+					double dth = 0.131 * cos(2 * CV_PI * (hue - 5.875) / 5.686) + 0.027;
+					//	2.3. 高齢者色度変換
+					Point3d Lab1(
+						Lab.x,
+						Cey * (cos(dth) * Lab.y - sin(dth) * Lab.z),
+						Cey * (sin(dth) * Lab.y + cos(dth) * Lab.z)
+						);
+					//	2.4. L*a*b* -> XYZ -> YBGR
+					Point3d XYZ1 = cvtLab2XYZ(Lab1, XYZWhite);
+					Point3d YBGR1 = cvtMatXYZ2YBGR * XYZ;
+					//	3. 老人性縮瞳を考慮した実効輝度比の計算（神戸）
+					double Ke70 = alpha70 * (K70.x * YBGR1.x + K70.y * YBGR1.y + K70.z * YBGR1.z) / (YBGR1.x + YBGR1.y + YBGR1.z);
+					double Ke80 = alpha80 * (K80.x * YBGR1.x + K80.y * YBGR1.y + K80.z * YBGR1.z) / (YBGR1.x + YBGR1.y + YBGR1.z);
+					//	4. 実効輝度の計算
 					//	Ye70.x = YeB(70歳変換後のB蛍光体の出力輝度), Ye70.y = YeG, Ye70.z = YeR
-					Vec3d Ye70 = Ke70 * YBGR;
-					Vec3d Ye80 = Ke80 * YBGR;
+					Vec3d Ye70 = Ke70 * YBGR1;
+					Vec3d Ye80 = Ke80 * YBGR1;
 					//	4. ガンマ補正でBGRに逆算
 					for (int i = 0; i < 3; i++)
 					{
@@ -130,7 +164,7 @@ int main(void)
 	imwrite("data/LUT_elder_70.png", LUT_elder70);
 	imwrite("data/LUT_elder_80.png", LUT_elder80);
 	//-----------------------------
-	//	LUTをXML形式で保存
+	//	作成時のガンマ特性をXML形式で保存
 	//-----------------------------
 	cout << "XML形式で保存しています..." << endl;
 	FileStorage fs("data/LUT_elder.xml", FileStorage::WRITE);
@@ -149,6 +183,9 @@ int main(void)
 			<< "xy_b" << xyDisp[0]
 			<< "xy_g" << xyDisp[1]
 			<< "xy_r" << xyDisp[2]
+			<< "}"
+		<< "white_point" << "{"
+			<< "xyY" << xyYWhite
 			<< "}"
 		<< "}";
 	cout << "LUTの保存に成功しました．" << endl;
@@ -171,7 +208,10 @@ Point3d operator*(Mat M, const Point3d& p)
 //	xyY to XYZ　の変換
 Point3d cvtxyY2XYZ(Point3d xyY)
 {
-	return Point3d(xyY.z * xyY.x / xyY.y, xyY.z, xyY.z * (1 - xyY.x - xyY.y) / xyY.y);
+	return Point3d(
+		xyY.z * xyY.x / xyY.y,
+		xyY.z,
+		xyY.z * (1 - xyY.x - xyY.y) / xyY.y);
 }
 Point3d cvtxyY2XYZ(Point2d xy, double Y)
 {
@@ -182,6 +222,37 @@ Point3d cvtXYZ2xyY(Point3d XYZ)
 {
 	double sum = XYZ.x + XYZ.y + XYZ.z;
 	return Point3d(XYZ.x / sum, XYZ.y / sum, XYZ.y);
+}
+//	XYZ to Lab　の変換
+Point3d cvtXYZ2Lab(Point3d XYZ, Point3d XYZ0)
+{
+	Point3d Lab;
+	if (XYZ.y / XYZ0.y > pow(6.0 / 29.0, 3))
+	{
+		Lab = Point3d(
+			116.0 * pow(XYZ.y / XYZ0.y, 1.0 / 3.0) - 16.0,
+			500.0 * (pow(XYZ.x / XYZ0.x, 1.0 / 3.0) - pow(XYZ.y / XYZ0.y, 1.0 / 3.0)),
+			200.0 * (pow(XYZ.y / XYZ0.y, 1.0 / 3.0) - pow(XYZ.z / XYZ0.z, 1.0 / 3.0))
+			);
+	}
+	else
+	{
+		Lab = Point3d(
+			903.29 * XYZ.y / XYZ0.y,
+			500.0 * (pow(XYZ.x / XYZ0.x, 1.0 / 3.0) - pow(XYZ.y / XYZ0.y, 1.0 / 3.0)),
+			200.0 * (pow(XYZ.y / XYZ0.y, 1.0 / 3.0) - pow(XYZ.z / XYZ0.z, 1.0 / 3.0))
+			);
+	}
+	return Lab;
+}
+//	Lab to XYZ　の変換
+Point3d cvtLab2XYZ(Point3d Lab, Point3d XYZ0)
+{
+	return Point3d(
+		pow(Lab.y / 500.0 + (Lab.x + 16.0) / 116.0, 3.0) * XYZ0.x,
+		pow((Lab.x + 16.0) / 116.0, 3.0) * XYZ0.y,
+		pow(-Lab.z / 200.0 + (Lab.x + 16.0) / 116.0, 3.0) * XYZ0.z
+		);
 }
 
 //	LUTに従って画素値の入れ替え

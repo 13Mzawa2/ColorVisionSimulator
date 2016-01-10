@@ -160,7 +160,7 @@ int main(void)
 						LMSBrettel_typeP.x = -(npd1.y*LMS.y + npd1.z * LMS.z) / npd1.x;		//	法線ベクトルで定義される平面にL軸平行移動
 					else
 						LMSBrettel_typeP.x = -(npd2.y*LMS.y + npd2.z * LMS.z) / npd2.x;
-					double kp = 1.0 - Ma1.x * LMS.x / Ma1.dot(LMSBrettel_typeP);			//	L錐体が寄与する輝度成分をカット
+					double kp = (Ma1.dot(LMS) - Ma1.x * LMS.x) / Ma1.dot(LMSBrettel_typeP);			//	L錐体が寄与する輝度成分をカット
 					Point3d LMSKanbe_typeP = kp * LMSBrettel_typeP;
 					//	Type D
 					//	M錐体欠損
@@ -169,7 +169,7 @@ int main(void)
 						LMSBrettel_typeD.y = -(npd1.z*LMS.z + npd1.x * LMS.x) / npd1.y;
 					else
 						LMSBrettel_typeD.y = -(npd2.z*LMS.z + npd2.x * LMS.x) / npd2.y;
-					double kd = 1.0 - Ma1.y * LMS.y / Ma1.dot(LMSBrettel_typeD);
+					double kd = (Ma1.dot(LMS) - Ma1.y * LMS.y) / Ma1.dot(LMSBrettel_typeD);
 					Point3d LMSKanbe_typeD = kd * LMSBrettel_typeD;
 					//	Type T
 					//	S錐体欠損
@@ -178,7 +178,7 @@ int main(void)
 						LMSBrettel_typeT.z = -(nt1.x*LMS.x + nt1.y * LMS.y) / nt1.z;
 					else
 						LMSBrettel_typeT.z = -(nt2.x*LMS.x + nt2.y * LMS.y) / nt2.z;
-					double kt = 1.0 - Ma1.z * LMS.z / Ma1.dot(LMSBrettel_typeT);		//	実は kt = 1
+					double kt = (Ma1.dot(LMS) - Ma1.z * LMS.z) / Ma1.dot(LMSBrettel_typeT);		//	実は kt = 1
 					Point3d LMSKanbe_typeT = kt* LMSBrettel_typeT;
 					//	4. LMS -> XYZ -> YBGR
 					Vec3d YBGR_typeP = cvtMatLMS2YBGR * LMSKanbe_typeP;

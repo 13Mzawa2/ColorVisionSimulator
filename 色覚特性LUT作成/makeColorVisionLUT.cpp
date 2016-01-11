@@ -202,7 +202,7 @@ int main(void)
 	//-----------------------------
 	//	画像変換テスト
 	//-----------------------------
-	Mat testImg = imread("img/sapporo_new.png");
+	Mat testImg = imread("img/hue.png");
 	Mat dstImgP, dstImgD, dstImgT;
 	lookup(testImg, dstImgP, LUT_typeP);
 	lookup(testImg, dstImgD, LUT_typeD);
@@ -215,9 +215,9 @@ int main(void)
 	destroyAllWindows();
 
 	cout << "結果を保存中..." << endl;
-	imwrite("img/sapporo_new1.png", dstImgP);
-	imwrite("img/sapporo_new2.png", dstImgD);
-	imwrite("img/sapporo_new3.png", dstImgT);
+	imwrite("img/hue1.png", dstImgP);
+	imwrite("img/hue2.png", dstImgD);
+	imwrite("img/hue3.png", dstImgT);
 	//-----------------------------
 	//	LUTをPNG形式で保存
 	//-----------------------------

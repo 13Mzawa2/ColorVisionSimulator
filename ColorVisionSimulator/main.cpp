@@ -32,7 +32,7 @@ using namespace std;
 #define BIT(B, G, R) ((B) << 16 | (G) << 8 | (R))
 
 //	3型2色覚(type T)の出力を許可する場合はコメントを外す
-//#define USE_TYPE_T
+#define USE_TYPE_T
 
 //--------------------------------------------
 //	関数プロトタイプ

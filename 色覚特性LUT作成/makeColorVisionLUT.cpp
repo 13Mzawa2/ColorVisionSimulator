@@ -108,10 +108,10 @@ static Point3d LMS575nm = cvtMatXYZ2LMS * cvtxyY2XYZ(xy575nm, 1.0);
 static Point3d LMS475nm = cvtMatXYZ2LMS * cvtxyY2XYZ(xy475nm, 1.0);
 static Point3d LMS660nm = cvtMatXYZ2LMS * cvtxyY2XYZ(xy660nm, 1.0);
 static Point3d LMS485nm = cvtMatXYZ2LMS * cvtxyY2XYZ(xy485nm, 1.0);
-static Point3d npd1 = LMSWhite.cross(LMS575nm);		//	575nm, Whiteで張る投影平面の法線ベクトル(P, D)
-static Point3d npd2 = LMSWhite.cross(LMS475nm);		//	475nm, Whiteで張る投影平面の法線ベクトル(P, D)
-static Point3d nt1 = LMSWhite.cross(LMS660nm);			//	660nm, Whiteで張る投影平面の法線ベクトル(T)
-static Point3d nt2 = LMSWhite.cross(LMS485nm);			//	485nm, Whiteで張る投影平面の法線ベクトル(T)
+static Point3d npd1 = (Point3d)normalize((Vec3d)LMSWhite.cross(LMS575nm));		//	575nm, Whiteで張る投影平面の法線ベクトル(P, D)
+static Point3d npd2 = (Point3d)normalize((Vec3d)LMSWhite.cross(LMS475nm));		//	475nm, Whiteで張る投影平面の法線ベクトル(P, D)
+static Point3d nt1 = (Point3d)normalize((Vec3d)LMSWhite.cross(LMS660nm));			//	660nm, Whiteで張る投影平面の法線ベクトル(T)
+static Point3d nt2 = (Point3d)normalize((Vec3d)LMSWhite.cross(LMS485nm));			//	485nm, Whiteで張る投影平面の法線ベクトル(T)
 static Point3d Ma1(
 	cvtMatLMS2XYZ.at<double>(1, 0),
 	cvtMatLMS2XYZ.at<double>(1, 1),
@@ -122,6 +122,7 @@ static Mat cvtMatLMS2YBGR = cvtMatXYZ2YBGR * cvtMatLMS2XYZ;	//	= cvtMatXYZ2YBGR 
 
 int main(void)
 {
+	double npd1d = norm(npd1);
 	//-------------------------------------------------
 	//	ルックアップテーブルの作成
 	//	b<<16 + g<<8 + r　のマクロでアクセスする

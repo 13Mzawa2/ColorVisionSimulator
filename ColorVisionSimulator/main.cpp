@@ -182,12 +182,12 @@ int main(void)
 	waitKey(0);
 
 	//	ƒŠƒl[ƒ€‚µ‚Ä•Û‘¶
-	imwrite(path.parent_path() + "/" + path.stem() + "_elder70" + path.extension(), elder70);
-	imwrite(path.parent_path() + "/" + path.stem() + "_elder80" + path.extension(), elder80);
-	imwrite(path.parent_path() + "/" + path.stem() + "_type1" + path.extension(), typeP);
-	imwrite(path.parent_path() + "/" + path.stem() + "_type2" + path.extension(), typeD);
+	imwrite(path.parent_path().string() + "/" + path.stem() + "_elder70" + path.extension(), elder70);
+	imwrite(path.parent_path().string() + "/" + path.stem() + "_elder80" + path.extension(), elder80);
+	imwrite(path.parent_path().string() + "/" + path.stem() + "_type1" + path.extension(), typeP);
+	imwrite(path.parent_path().string() + "/" + path.stem() + "_type2" + path.extension(), typeD);
 #ifdef USE_TYPE_T
-	imwrite(path.parent_path() + "/" + path.stem() + "_type3" + path.extension(), typeT);
+	imwrite(path.parent_path().string() + "/" + path.stem() + "_type3" + path.extension(), typeT);
 #endif
 	destroyAllWindows();
 
